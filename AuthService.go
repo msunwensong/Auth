@@ -25,8 +25,8 @@ func (a *Auth) GeneratorCkeyAndSign(mac string) error {
 	tmp := probeId + (a.SCommResult.Timestamp / 6719)
 	a.ckey = utils.Md5([]byte(tmp))
 	//2.计算签名(sign=sha256(id+timestamp+ckey))
-	sn := append([])
-	a.SCommResult.Sign = utils.Sha256(sn)
+	//sn := append([])
+	//a.SCommResult.Sign = utils.Sha256(sn)
 	return nil
 }
 
