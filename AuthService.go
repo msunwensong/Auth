@@ -3,8 +3,8 @@ package secure_auth
 import (
 	"auth/utils"
 	"bytes"
+	"encoding/hex"
 	"errors"
-	"fmt"
 	"strconv"
 	"time"
 
@@ -16,10 +16,11 @@ const CKEY_NUM = 6719
 //定义认证类型
 type Auth struct {
 	SCommResult
-	ckey  string //ckey(自己使用)
-	Id    string //MD5(mac)
-	Token string //Token 服务端分配
-	Skey  string //Skey  服务端分配
+	ckey    string //ckey(自己使用)
+	Id      string //MD5(mac)
+	Token   string //Token 服务端分配
+	Skey    string //Skey  服务端分配
+	ProbeId string //探针Id
 }
 
 //生成sign、timestamp。 参数mac地址
@@ -28,9 +29,9 @@ func (a *Auth) GeneratorCkeyAndSign(mac string) error {
 	a.Id = utils.Md5([]byte(mac))
 	a.SCommResult.Timestamp = time.Now().Unix()
 	//1.生成ckey=MD5(probeId+(Long)timestamp/6719)
-	probeId := utils.GetProbeId(a.Id)
+	a.ProbeId = utils.GetProbeId(a.Id)
 	buf := &bytes.Buffer{}
-	buf.WriteString(probeId)                                                     //id
+	buf.WriteString(a.ProbeId)                                                   //id
 	buf.WriteString(strconv.FormatInt((a.SCommResult.Timestamp / CKEY_NUM), 10)) //timestamp
 	a.ckey = utils.Md5([]byte(buf.String()))
 	//2.计算签名(sign=sha256(id+timestamp+ckey))
@@ -85,18 +86,19 @@ func (a *Auth) GetTokenAndSkey(smp *SCommParam) error {
 	//base64解码
 	decode := utils.Base64Decode(result.String())
 	//aes解密
-	fmt.Println("decode-->", len(decode))
-	tmp, err := utils.AESCBCDecrypter([]byte(a.ckey), decode)
+	ckeyBytes, cErr := hex.DecodeString(a.ckey)
+	if cErr != nil {
+		return cErr
+	}
+	tmp, err := utils.AESCBCDecrypter(ckeyBytes, decode)
 	if err != nil {
-		fmt.Println(err)
-		return errors.New("AESCBCEncrypterWithIV error")
+		return err
 	}
 	jsonStr = string(tmp[:])
-	fmt.Println("jsonStr=", jsonStr)
 	//3.得到token、过期时间、服务端生成的skey
-	result = gjson.Get(jsonStr, "data.skey")
+	result = gjson.Get(jsonStr, "skey")
 	a.Skey = result.String()
-	result = gjson.Get(jsonStr, "data.token")
+	result = gjson.Get(jsonStr, "token")
 	a.Token = result.String()
 	return nil
 }

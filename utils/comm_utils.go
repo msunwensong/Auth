@@ -17,7 +17,7 @@ func Md5(b []byte) string {
 
 func Sha256(b []byte) string {
 	h := sha256.New()
-	h.Write([]byte(b))
+	h.Write(b)
 	bs := h.Sum(nil)
 	return hex.EncodeToString(bs)
 }

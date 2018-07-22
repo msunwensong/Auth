@@ -105,8 +105,6 @@ func AESCBCDecrypter(key []byte, ciphertext []byte) ([]byte, error) {
 	// using crypto/hmac) before being decrypted in order to avoid creating
 	// a padding oracle.
 	paddingLen := int(plaintext[len(plaintext)-1])
-	fmt.Println("aes.BlockSize", aes.BlockSize)
-	fmt.Println("paddingLen", paddingLen)
 	if paddingLen < 0 || paddingLen > aes.BlockSize {
 		return nil, errors.New("Invalid padding length")
 	}
