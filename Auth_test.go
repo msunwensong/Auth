@@ -32,7 +32,7 @@ func TestSecureFlow(t *testing.T) {
 	   (url带上 id、auth.Timestamp、auth.SCommResult.Sign参数)
 	*/
 	//sign 、status、Timestamp、data 参数是server给的
-	smp := SCommParam{Status: 0, Sign: "111", Data: data, Timestamp: 1212}
+	smp := SCommParam{Data: data}
 	terr := auth.GetTokenAndSkey(&smp)
 	if terr != nil {
 		fmt.Println("GetTokenAndSkey error ", terr)
