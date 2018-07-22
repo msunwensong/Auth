@@ -3,7 +3,9 @@ package utils
 import (
 	"crypto/md5"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
+	"strconv"
 )
 
 func Md5(b []byte) string {
@@ -21,7 +23,17 @@ func Sha256(b []byte) string {
 }
 
 //生成probe_id
-func GetProbeId(id string, time int64) string {
-	val := "123"
-	return val
+func GetProbeId(id string) string {
+	return Md5([]byte(id + strconv.Itoa(6101)))
+}
+func Base64Encode(input []byte) string {
+
+	encodeString := base64.StdEncoding.EncodeToString(input)
+	return encodeString
+}
+
+func Base64Decode(str string) []byte {
+	var raw_data []byte
+	raw_data, _ = base64.StdEncoding.DecodeString(str)
+	return raw_data
 }

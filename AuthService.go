@@ -2,9 +2,16 @@ package secure_auth
 
 import (
 	"auth/utils"
+	"bytes"
+	"errors"
 	"fmt"
+	"strconv"
 	"time"
+
+	"github.com/tidwall/gjson"
 )
+
+const CKEY_NUM = 6719
 
 //定义认证类型
 type Auth struct {
@@ -21,22 +28,73 @@ func (a *Auth) GeneratorCkeyAndSign(mac string) error {
 	a.Id = utils.Md5([]byte(mac))
 	a.SCommResult.Timestamp = time.Now().Unix()
 	//1.生成ckey=MD5(probeId+(Long)timestamp/6719)
-	probeId := utils.GetProbeId(a.Id, a.SCommResult.Timestamp)
-	tmp := probeId + (a.SCommResult.Timestamp / 6719)
-	a.ckey = utils.Md5([]byte(tmp))
+	probeId := utils.GetProbeId(a.Id)
+	buf := &bytes.Buffer{}
+	buf.WriteString(probeId)                                                     //id
+	buf.WriteString(strconv.FormatInt((a.SCommResult.Timestamp / CKEY_NUM), 10)) //timestamp
+	a.ckey = utils.Md5([]byte(buf.String()))
 	//2.计算签名(sign=sha256(id+timestamp+ckey))
-	//sn := append([])
-	//a.SCommResult.Sign = utils.Sha256(sn)
+	buf.Reset()                                         //buf重置
+	buf.WriteString(a.Id)                               //id
+	buf.WriteString(strconv.FormatInt(a.Timestamp, 10)) //timestamp
+	buf.WriteString(a.ckey)                             //ckey
+	a.SCommResult.Sign = utils.Sha256([]byte(buf.String()))
 	return nil
 }
 
+/*
+
+1.签名验证sign=sha256(data+timestamp+status+ckey)
+		2.用AES密码ckey解密数据
+		3.得到token、过期时间、服务端生成的skey
+		{
+			status:0, 0-正常 1-异常
+			"data":{
+			"skey":"ssss", --明文(服务生成)
+			"token":"xxxx",
+			"expire":123344
+			},
+			"timestamp":15290011,
+			"sign":123 sign=sha256(data+timestamp+status+ckey)
+		}
+*/
+
 //获取服务端分配的token
 func (a *Auth) GetTokenAndSkey(smp *SCommParam) error {
+	//0.校验服务器是否成功
+	jsonStr := string(smp.Data)
+	result := gjson.Get(jsonStr, "status")
+	if result.Int() != 0 {
+		return errors.New("status not equal zero ")
+	}
+
 	//1.签名验证sign=sha256(data+timestamp+status+ckey)
+	buf := &bytes.Buffer{}
+	for _, val := range []string{"data", "timestamp", "status"} {
+		result = gjson.Get(jsonStr, val)
+		buf.WriteString(result.String())
+	}
+	buf.WriteString(a.ckey) //ckey
+	sign := utils.Sha256([]byte(buf.String()))
+	result = gjson.Get(jsonStr, "sign")
+	if sign != result.String() {
+		return errors.New("sign not equal")
+	}
 	//2.用AES密码ckey解密数据
+	result = gjson.Get(jsonStr, "data")
+	//base64解码
+	decode := utils.Base64Decode(result.String())
+	tmp, err := utils.AesDecrypt([]byte(a.ckey), decode[16:], decode[:16])
+	if err != nil {
+		fmt.Println(err)
+		return errors.New("AESCBCEncrypterWithIV error")
+	}
+	jsonStr = string(tmp[:])
+	fmt.Println("jsonStr=", jsonStr)
 	//3.得到token、过期时间、服务端生成的skey
-	fmt.Println(*smp)
-	a.Skey = "ssss"
-	a.Token = "ttttttt"
+	result = gjson.Get(jsonStr, "data.skey")
+	a.Skey = result.String()
+	result = gjson.Get(jsonStr, "data.token")
+	a.Token = result.String()
 	return nil
 }

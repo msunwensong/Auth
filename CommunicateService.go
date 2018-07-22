@@ -20,11 +20,9 @@ func (c *Communication) init(skey, token, mac string) {
 
 //生成sign、ckey。 参数 id
 func (c *Communication) EncryptionData(data []byte) error {
-
-	c.Data = []byte{2, 2, 2, 22}
-	c.Sign = "111111"
+	c.Data = data
 	c.Timestamp = time.Now().Unix()
-
+	c.Sign = "111111"
 	return nil
 }
 
