@@ -84,7 +84,9 @@ func (a *Auth) GetTokenAndSkey(smp *SCommParam) error {
 	result = gjson.Get(jsonStr, "data")
 	//base64解码
 	decode := utils.Base64Decode(result.String())
-	tmp, err := utils.AesDecrypt([]byte(a.ckey), decode[16:], decode[:16])
+	//aes解密
+	fmt.Println("decode-->", len(decode))
+	tmp, err := utils.AESCBCDecrypter([]byte(a.ckey), decode)
 	if err != nil {
 		fmt.Println(err)
 		return errors.New("AESCBCEncrypterWithIV error")
