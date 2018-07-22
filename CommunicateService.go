@@ -12,7 +12,7 @@ type Communication struct {
 	probeId string //探针ID (自己使用)
 }
 
-func (c *Communication) init(skey, token, mac string) {
+func (c *Communication) Init(skey, token, mac string) {
 	c.skey = skey
 	c.token = token
 	c.probeId = mac //两次mad5之后的值
